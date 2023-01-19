@@ -29,6 +29,7 @@ namespace grub
     };
 
     std::vector<Entry> get_menu_entries(const std::string &grub_cfg_path);
+    std::ostream &operator<<(std::ostream &os, const Entry &entry);
 }
 
 #endif

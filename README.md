@@ -33,6 +33,7 @@ ninja
 - CMake
 - Ninja
 - mold
+- nlohmann/json
 
 # License:
 GPLv3

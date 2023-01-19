@@ -10,12 +10,9 @@ int main(int argc, char **argv)
     }
 
     const auto &entries = grub::get_menu_entries(argv[1]);
-    // Use std::transform to print entries with indexing
-    std::transform(entries.begin(),
-                   entries.end(),
-                   std::ostream_iterator<grub::Entry>(std::cout),
-                   [](const auto &entry)
-                   { return entry; });
+    std::for_each(entries.begin(), entries.end(), [](const auto &entry)
+                  { static size_t counter_ = 0;
+                   std::cout << "Entry " << counter_++  << ": " << entry; });
 
     return 0;
 }

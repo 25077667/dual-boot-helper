@@ -10,7 +10,7 @@ namespace grub
     class Entry
     {
     public:
-        explicit Entry(const std::string &title, const std::string &kernel, const std::string &initrd, const std::string &options) noexcept;
+        explicit Entry(const std::string &title, const std::string &id, const std::string &kernel, const std::string &initrd, const std::string &options) noexcept;
         Entry(const Entry &other) = default;
         Entry(Entry &&other) noexcept = default;
         Entry &operator=(const Entry &other) = default;
@@ -23,6 +23,7 @@ namespace grub
 
     private:
         std::string title;
+        std::string id;
         std::string kernel;
         std::string initrd;
         std::string options;
@@ -30,6 +31,8 @@ namespace grub
 
     std::vector<Entry> get_menu_entries(const std::string &grub_cfg_path);
     std::ostream &operator<<(std::ostream &os, const Entry &entry);
+
+    [[nodiscard]] bool save_default_entry(size_t index, const std::string &grub_cfg_path);
 }
 
 #endif

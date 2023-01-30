@@ -1,6 +1,7 @@
 #include <grub_cfg.hpp>
 #include <fstream>
 #include <iostream>
+#include <cctype>
 
 namespace detail
 {
@@ -20,6 +21,11 @@ namespace detail
         return get_string_between(line, "'", "'");
     }
 
+    std::string get_id(const std::string &line)
+    {
+        return get_string_between(line, "$menuentry_id_option \'", "\'");
+    }
+
     std::pair<std::string, std::string> parse_kernel_line(const std::string &line)
     {
         // linux   /vmlinuz-linux root=UUID=165a8258-9699-4f6c-a086-bde7f9e42ee8 rw  loglevel=3 quiet
@@ -35,7 +41,7 @@ namespace detail
     }
 
     // Parse single menuentry from grub.cfg ifstream file
-    grub::Entry parse_menuentry(std::ifstream &grub_cfg, const std::string &title)
+    grub::Entry parse_menuentry(std::ifstream &grub_cfg, const std::string &title, const std::string &id)
     {
         std::string line;
         // Read until kernel info line
@@ -61,18 +67,40 @@ namespace detail
             if (line.find("}") != std::string::npos)
                 break;
         }
-        return grub::Entry(title, kernel, initrd, options);
+        return grub::Entry(title, id, kernel, initrd, options);
+    }
+
+    std::string gen_new_default_boot_cfg(size_t index, const std::string &grub_cfg_path)
+    {
+        std::ifstream grub_cfg(grub_cfg_path);
+        std::string line;
+        std::string grub_cfg_content;
+        while (std::getline(grub_cfg, line))
+        {
+            const static auto &DEFAULT_BOOT_STR = "set default=";
+            const auto pos = line.find(DEFAULT_BOOT_STR);
+            if (pos != std::string::npos && isdigit(line[pos + strlen(DEFAULT_BOOT_STR) + 1]))
+            {
+                grub_cfg_content += "set default=\"" + std::to_string(index) + "\"\n";
+            }
+            else
+            {
+                grub_cfg_content += line + "\n";
+            }
+        }
+        return grub_cfg_content;
     }
 }
 
-grub::Entry::Entry(const std::string &title, const std::string &kernel, const std::string &initrd, const std::string &options) noexcept
-    : title(title), kernel(kernel), initrd(initrd), options(options)
+grub::Entry::Entry(const std::string &title, const std::string &id, const std::string &kernel, const std::string &initrd, const std::string &options) noexcept
+    : title{title}, id{id}, kernel{kernel}, initrd{initrd}, options{options}
 {
 }
 
 nlohmann::json grub::Entry::to_json() const
 {
     nlohmann::json j;
+    j["menuentry_id_option"] = id;
     j["title"] = title;
     j["kernel"] = kernel;
     j["initrd"] = initrd;
@@ -95,7 +123,7 @@ std::vector<grub::Entry> grub::get_menu_entries(const std::string &grub_cfg_path
         // Title is between the first and second single-quotes in the first line
         if (line.find("menuentry") == 0)
         {
-            entries.emplace_back(detail::parse_menuentry(grub_cfg, detail::get_title(line)));
+            entries.emplace_back(detail::parse_menuentry(grub_cfg, detail::get_title(line), detail::get_id(line)));
         }
         // submenus are not supported now
 #ifdef DEBUG
@@ -103,4 +131,12 @@ std::vector<grub::Entry> grub::get_menu_entries(const std::string &grub_cfg_path
 #endif
     }
     return entries;
+}
+
+bool grub::save_default_entry(size_t index, const std::string &grub_cfg_path)
+{
+    const auto &grub_cfg_content = detail::gen_new_default_boot_cfg(index, grub_cfg_path);
+    std::ofstream grub_cfg_out(grub_cfg_path);
+    grub_cfg_out << grub_cfg_content;
+    return grub_cfg_out.good();
 }
